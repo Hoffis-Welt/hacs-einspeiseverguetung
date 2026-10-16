@@ -6,7 +6,7 @@ zu erfassen und auszuwerten – ohne Helfer, Template-Sensoren oder YAML. Alle W
 
 ## Funktionen
 - **Eine Karte für alles** (`custom:einspeiseverguetung-card`) mit den Reitern **Auswertung** und **Eingabe**: einmal konfigurieren, fertig. Der Eingabe-Reiter lässt sich ausblenden (reine Anzeigekarte).
-- Die beiden Reiter gibt es auch als einzelne Karten:
+- Die beiden Reiter gibt es auch als einzelne Karten (nur für bestehende Dashboards, in der Kartenauswahl erscheint nur die Kombikarte):
 - **Eingabekarte** (`custom:einspeiseverguetung-eingabe-card`)
   - monatliche Abschläge, Jahresabrechnung (Ausgleich) und Vergütungssätze **mit Gültig-ab-Datum** per Formular
   - Zeile antippen = ins Formular übernehmen; gleicher Monat/Jahr/Datum überschreibt

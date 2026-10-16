@@ -5,7 +5,7 @@
  * - einspeiseverguetung-auswertung-card: Monatstabelle, Saldo und Prognose
  * Lizenz: MIT
  */
-const EWA_VERSION = '1.2.0';
+const EWA_VERSION = '1.2.1';
 
 /* ---------- gemeinsame Hilfen ---------- */
 const EWA_DEF = {
@@ -678,9 +678,10 @@ const EWA_REG = [
   ['einspeiseverguetung-auswertung-card', EwaAuswertungCard, 'Einspeisevergütung Auswertung', 'Saldo, Prognose und Monatstabelle der Einspeisevergütung gegen die Abschläge des Versorgers']
 ];
 window.customCards = window.customCards || [];
-EWA_REG.forEach(([tag, cls, name, desc]) => {
+EWA_REG.forEach(([tag, cls, name, desc], i) => {
   if (!customElements.get(tag)) customElements.define(tag, cls);
-  window.customCards.push({ type: tag, name: name, description: desc });
+  // In der Kartenauswahl erscheint nur die kombinierte Karte; die Einzelkarten bleiben für bestehende Dashboards nutzbar.
+  if (i === 0) window.customCards.push({ type: tag, name: name, description: desc });
 });
 // Alte Kartennamen weiter unterstützen
 if (!customElements.get('ewa-eingabe-card')) customElements.define('ewa-eingabe-card', class extends EwaEingabeCard {});
