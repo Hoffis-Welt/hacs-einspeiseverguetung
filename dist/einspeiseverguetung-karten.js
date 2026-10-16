@@ -6,7 +6,7 @@
  * (Die Reiter sind intern als eigene Elemente umgesetzt, in der Kartenauswahl erscheint nur die Karte.)
  * Lizenz: MIT
  */
-const EWA_VERSION = '1.3.1';
+const EWA_VERSION = '2.0.0';
 
 /* ---------- gemeinsame Hilfen ---------- */
 const EWA_DEF = {
@@ -51,14 +51,8 @@ const EWA_FIELDS = (extra) => ({
   }[s.name] || '')
 });
 
-/* ---------- Eingabe-Karte ---------- */
+/* ---------- Reiter Eingabe ---------- */
 class EwaEingabeCard extends HTMLElement {
-  static getConfigElement() {
-    const e = document.createElement('einspeiseverguetung-karten-editor');
-    e._kind = 'eingabe';
-    return e;
-  }
-  static getStubConfig() { return Object.assign({}, EWA_DEF); }
   setConfig(config) {
     this._config = Object.assign({}, EWA_DEF, config || {});
     if (this._built) { this._applyTitle(); this._mode(); this._load(); }
@@ -316,13 +310,8 @@ const EWA_STYLE = `<style>
   .hint { font-size: 0.8em; color: var(--secondary-text-color); margin-top: 8px; }
 </style>`;
 
+/* ---------- Reiter Auswertung ---------- */
 class EwaAuswertungCard extends HTMLElement {
-  static getConfigElement() {
-    const e = document.createElement('einspeiseverguetung-karten-editor');
-    e._kind = 'auswertung';
-    return e;
-  }
-  static getStubConfig() { return Object.assign({}, EWA_DEF); }
   setConfig(c) {
     this._c = Object.assign({}, EWA_DEF, c || {});
     this._key = null;
@@ -448,11 +437,10 @@ class EwaAuswertungCard extends HTMLElement {
   }
 }
 
-/* ---------- Kombinierte Karte (Reiter Auswertung / Eingabe) ---------- */
+/* ---------- Karte mit Reitern Auswertung / Eingabe ---------- */
 class EwaCombinedCard extends HTMLElement {
   static getConfigElement() {
     const e = document.createElement('einspeiseverguetung-karten-editor');
-    e._kind = 'combined';
     return e;
   }
   static getStubConfig() { return Object.assign({}, EWA_DEF); }
@@ -469,8 +457,8 @@ class EwaCombinedCard extends HTMLElement {
       .tabs button.on { background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: var(--primary-color); }
     </style>
     <ha-card><h2 id="t"></h2><div class="tabs" id="tabs"><button data-t="auswertung">Auswertung</button><button data-t="eingabe">Eingabe</button></div><div id="a"></div><div id="e"></div></ha-card>`;
-    this._aus = document.createElement('einspeiseverguetung-auswertung-card');
-    this._ein = document.createElement('einspeiseverguetung-eingabe-card');
+    this._aus = document.createElement('ewa-tab-auswertung');
+    this._ein = document.createElement('ewa-tab-eingabe');
     this._aus.setAttribute('embedded', ''); this._ein.setAttribute('embedded', '');
     r.querySelector('#a').appendChild(this._aus);
     r.querySelector('#e').appendChild(this._ein);
@@ -512,7 +500,6 @@ const EWA_STAT_BASE = {
 class EwaKartenEditor extends HTMLElement {
   constructor() {
     super();
-    this._kind = 'eingabe';
     this._cfg = Object.assign({}, EWA_DEF);
     this._ids = [];
     this._newMode = {};
@@ -539,7 +526,7 @@ class EwaKartenEditor extends HTMLElement {
   }
   _emit(patch) {
     this._cfg = Object.assign({}, this._cfg, patch);
-    const out = { type: this._type || (this._kind === 'combined' ? 'custom:einspeiseverguetung-card' : 'custom:einspeiseverguetung-' + this._kind + '-card') };
+    const out = { type: this._type || 'custom:einspeiseverguetung-card' };
     Object.keys(this._cfg).forEach((k) => {
       if (k === 'type') return;
       const v = this._cfg[k];
@@ -642,36 +629,30 @@ class EwaKartenEditor extends HTMLElement {
       { name: 'versorger', selector: { text: {} } },
       { name: 'titel', selector: { text: {} } }
     ];
-    if (this._kind !== 'eingabe') top.push({ name: 'quelle', selector: { entity: { domain: 'sensor' } } });
-    if (this._kind === 'combined') top.push({ name: 'eingabe_anzeigen', selector: { boolean: {} } });
+    top.push({ name: 'quelle', selector: { entity: { domain: 'sensor' } } });
+    top.push({ name: 'eingabe_anzeigen', selector: { boolean: {} } });
     r.appendChild(this._form(top));
     const h = document.createElement('h4'); h.textContent = 'Statistiken (vorhanden wählen oder neu anlegen)';
     r.appendChild(h);
     const help = 'Format quelle:name, z. B. einspeisung:abschlag_monat.';
     r.appendChild(this._statField('stat_abschlag', 'Statistik: Abschlag monatlich', help));
-    if (this._kind !== 'auswertung') r.appendChild(this._statField('stat_abschlag_gesamt', 'Statistik: Abschlag Gesamtsumme', help));
+    r.appendChild(this._statField('stat_abschlag_gesamt', 'Statistik: Abschlag Gesamtsumme', help));
     r.appendChild(this._statField('stat_abrechnung', 'Statistik: Abrechnung (Ausgleich)', help));
     r.appendChild(this._statField('stat_satz', 'Statistik: Vergütungssatz (ct/kWh)', help));
-    if (this._kind !== 'auswertung') {
-      r.appendChild(this._form([{ name: 'abschlag_vorgabe', selector: { number: { min: 0, max: 10000, step: 0.01, mode: 'box', unit_of_measurement: '€' } } }]));
-    }
+    r.appendChild(this._form([{ name: 'abschlag_vorgabe', selector: { number: { min: 0, max: 10000, step: 0.01, mode: 'box', unit_of_measurement: '€' } } }]));
   }
 }
 
-/* ---------- Registrierung (neue Namen + alte Namen als Alias) ---------- */
-if (!customElements.get('einspeiseverguetung-karten-editor')) customElements.define('einspeiseverguetung-karten-editor', EwaKartenEditor);
-const EWA_REG = [
-  ['einspeiseverguetung-card', EwaCombinedCard, 'Einspeisevergütung', 'Auswertung (Saldo, Prognose, Monatstabelle) und Eingabe von Abschlägen, Abrechnung und Vergütungssatz'],
-  ['einspeiseverguetung-eingabe-card', EwaEingabeCard, 'Einspeisevergütung Eingabe', 'Eingabe von Abschlägen, Abrechnungen und Vergütungssatz in die Langzeitstatistik'],
-  ['einspeiseverguetung-auswertung-card', EwaAuswertungCard, 'Einspeisevergütung Auswertung', 'Saldo, Prognose und Monatstabelle der Einspeisevergütung gegen die Abschläge des Versorgers']
-];
+/* ---------- Registrierung ---------- */
+// Die Reiter sind interne Elemente; in der Kartenauswahl erscheint nur die Karte.
+customElements.define('ewa-tab-eingabe', EwaEingabeCard);
+customElements.define('ewa-tab-auswertung', EwaAuswertungCard);
+customElements.define('einspeiseverguetung-karten-editor', EwaKartenEditor);
+customElements.define('einspeiseverguetung-card', EwaCombinedCard);
 window.customCards = window.customCards || [];
-EWA_REG.forEach(([tag, cls, name, desc], i) => {
-  if (!customElements.get(tag)) customElements.define(tag, cls);
-  // In der Kartenauswahl erscheint nur die Karte; die Reiter-Elemente werden intern verwendet.
-  if (i === 0) window.customCards.push({ type: tag, name: name, description: desc });
+window.customCards.push({
+  type: 'einspeiseverguetung-card',
+  name: 'Einspeisevergütung',
+  description: 'Auswertung (Saldo, Prognose, Monatstabelle) und Eingabe von Abschlägen, Abrechnung und Vergütungssatz'
 });
-// Alte Kartennamen weiter unterstützen
-if (!customElements.get('ewa-eingabe-card')) customElements.define('ewa-eingabe-card', class extends EwaEingabeCard {});
-if (!customElements.get('ewa-auswertung-card')) customElements.define('ewa-auswertung-card', class extends EwaAuswertungCard {});
 console.info('%c EINSPEISEVERGÜTUNG-KARTE %c v' + EWA_VERSION, 'color:#fff;background:#2e9e6b;font-weight:700', '');
