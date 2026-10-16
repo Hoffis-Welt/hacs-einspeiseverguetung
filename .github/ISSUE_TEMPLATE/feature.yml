@@ -1,0 +1,14 @@
+name: Wunsch / Idee
+description: Eine neue Funktion oder Verbesserung vorschlagen
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: Was soll die Karte können?
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Wofür brauchst du das? (dein Anwendungsfall)

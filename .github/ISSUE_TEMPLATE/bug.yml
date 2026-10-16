@@ -1,0 +1,36 @@
+name: Fehler melden
+description: Etwas funktioniert nicht wie erwartet
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version der Karte
+      description: In HACS sichtbar oder in der Browser-Konsole („EINSPEISEVERGÜTUNG-KARTE v…“)
+    validations:
+      required: true
+  - type: input
+    id: ha
+    attributes:
+      label: Home-Assistant-Version
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Was passiert, was hast du erwartet?
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Kartenkonfiguration (YAML)
+      render: yaml
+  - type: textarea
+    id: console
+    attributes:
+      label: Fehlermeldung aus der Browser-Konsole (F12), falls vorhanden
+      render: text
+  - type: markdown
+    attributes:
+      value: Screenshots helfen. Bitte persönliche Daten (Beträge, Namen) vorher unkenntlich machen.

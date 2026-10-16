@@ -5,6 +5,10 @@
 </p>
 
 <p align="center">
+  🇩🇪 Deutsch &nbsp;|&nbsp; <a href="README.en.md">🇬🇧 English</a>
+</p>
+
+<p align="center">
   <a href="https://github.com/hacs/integration"><img alt="HACS Custom" src="https://img.shields.io/badge/HACS-Custom-41BDF5.svg"></a>
   <img alt="Home Assistant" src="https://img.shields.io/badge/Home%20Assistant-2024.x%2B-03a9f4.svg">
   <img alt="Lizenz MIT" src="https://img.shields.io/badge/Lizenz-MIT-green.svg">
@@ -47,9 +51,13 @@ Alles ohne Helfer, Template-Sensoren oder YAML – alle Werte liegen in der **La
 - Schreiben in die Statistik braucht einen **Administrator-Benutzer**
 
 ## Installation über HACS
-1. HACS → ⋮ → **Benutzerdefinierte Repositories** → URL dieses Repositories, Kategorie **Dashboard**
+
+[![Repository in HACS öffnen](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Hoffis-Welt&repository=hacs-einspeiseverguetung&category=plugin)
+
+1. Auf den Button klicken (oder: HACS → ⋮ → **Benutzerdefinierte Repositories** → URL dieses Repositories, Kategorie **Dashboard**)
 2. „Einspeisevergütung Karte“ herunterladen
 3. Browser hart neu laden (Strg+F5). HACS trägt die Ressource automatisch ein.
+4. Im Dashboard **Karte hinzufügen** → „Einspeisevergütung“
 
 ## Einrichtung
 Karte „Einspeisevergütung“ im Dashboard hinzufügen und im Editor einstellen:
@@ -91,6 +99,15 @@ quelle: sensor.pv_einspeisung_gesamt
 1. Im Reiter **Eingabe** den **Vergütungssatz** eintragen (ct/kWh, ab Datum, z. B. Inbetriebnahme)
 2. **Abschläge** je Monat eintragen
 3. Nach der Jahresabrechnung den **Ausgleich** eintragen (positiv = Versorger zahlt dir)
+
+## Häufige Fragen
+**Welchen Zähler nehme ich als Einspeise-Zähler?** Einen Sensor, der die ins Netz eingespeiste Energie in kWh hochzählt (z. B. vom Wechselrichter, Smart Meter oder Tibber/Pulse). Er muss `state_class: total_increasing` haben, damit Home Assistant eine Langzeitstatistik führt.
+
+**Wo liegen meine Eingaben?** In der Langzeitstatistik von Home Assistant (Recorder), nicht in Helfern oder Dateien. Sie bleiben bei einem Backup der Datenbank erhalten.
+
+**Warum sehe ich den Reiter „Eingabe“ nicht?** Eingaben sind nur für Administratoren möglich. Für andere Benutzer zeigt die Karte eine Meldung oder lässt sich über `eingabe_anzeigen: false` als reine Anzeige betreiben.
+
+**Ist das meine Abrechnung?** Nein. Die Karte rechnet aus deinen Zählerwerten und dem eingetragenen Satz. Maßgeblich ist immer die Abrechnung deines Versorgers; die Karte hilft, Abweichungen früh zu erkennen.
 
 ## Hinweise
 - Der Satz gilt ab seinem Datum, frühere Zeiträume rechnen mit dem damals gültigen Satz.
