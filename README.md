@@ -8,6 +8,7 @@
   <a href="https://github.com/hacs/integration"><img alt="HACS Custom" src="https://img.shields.io/badge/HACS-Custom-41BDF5.svg"></a>
   <img alt="Home Assistant" src="https://img.shields.io/badge/Home%20Assistant-2024.x%2B-03a9f4.svg">
   <img alt="Lizenz MIT" src="https://img.shields.io/badge/Lizenz-MIT-green.svg">
+  <img alt="Status Beta" src="https://img.shields.io/badge/Status-Beta-orange.svg">
 </p>
 
 <p align="center">
@@ -37,6 +38,8 @@ Alles ohne Helfer, Template-Sensoren oder YAML – alle Werte liegen in der **La
   - Zeile antippen = ins Formular übernehmen; gleicher Monat/Jahr/Datum überschreibt
 - **Komplett im Karteneditor konfigurierbar**, inkl. Name des Einspeiseversorgers und „➕ Neu anlegen…“ für die Statistiken
 - Passt sich dem Theme an (hell/dunkel)
+
+> **Beta (Version 0.x):** Die Karte ist im Alltag im Einsatz, wurde aber noch nicht von vielen Installationen getestet. Rückmeldungen und Fehler gerne als [Issue](https://github.com/Hoffis-Welt/hacs-einspeiseverguetung/issues) melden.
 
 ## Voraussetzungen
 - Home Assistant 2024.x oder neuer mit Recorder

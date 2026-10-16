@@ -6,7 +6,7 @@
  * (Die Reiter sind intern als eigene Elemente umgesetzt, in der Kartenauswahl erscheint nur die Karte.)
  * Lizenz: MIT
  */
-const EWA_VERSION = '2.0.0';
+const EWA_VERSION = '0.9.0';
 
 /* ---------- gemeinsame Hilfen ---------- */
 const EWA_DEF = {
