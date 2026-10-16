@@ -5,6 +5,8 @@ zu erfassen und auszuwerten – ohne Helfer, Template-Sensoren oder YAML. Alle W
 **Langzeitstatistik** von Home Assistant.
 
 ## Funktionen
+- **Eine Karte für alles** (`custom:einspeiseverguetung-card`) mit den Reitern **Auswertung** und **Eingabe**: einmal konfigurieren, fertig. Der Eingabe-Reiter lässt sich ausblenden (reine Anzeigekarte).
+- Die beiden Reiter gibt es auch als einzelne Karten:
 - **Eingabekarte** (`custom:einspeiseverguetung-eingabe-card`)
   - monatliche Abschläge, Jahresabrechnung (Ausgleich) und Vergütungssätze **mit Gültig-ab-Datum** per Formular
   - Zeile antippen = ins Formular übernehmen; gleicher Monat/Jahr/Datum überschreibt
@@ -25,19 +27,20 @@ zu erfassen und auszuwerten – ohne Helfer, Template-Sensoren oder YAML. Alle W
 3. Browser hart neu laden (Strg+F5). HACS trägt die Ressource automatisch ein.
 
 ## Einrichtung
-Karte im Dashboard hinzufügen (Suche: „Einspeisevergütung“) und im Editor einstellen:
+Karte „Einspeisevergütung“ im Dashboard hinzufügen und im Editor einstellen:
 
 | Feld | Bedeutung | Standard |
 |---|---|---|
 | `versorger` | Name des Einspeiseversorgers (Titel/Texte) | `Versorger` |
 | `titel` | Kartentitel (leer = automatisch) | – |
 | `jahr_entity` | optional: `input_select` mit den Jahren als Optionen. Leer = interne Jahresauswahl. Mit Entität schalten beide Karten gemeinsam und merken sich das Jahr | leer |
-| `quelle` | **Auswertung:** Einspeise-Zähler (kWh) | – (Pflicht) |
+| `quelle` | Einspeise-Zähler (kWh), Pflicht für die Auswertung | – |
+| `eingabe_anzeigen` | Reiter „Eingabe“ anzeigen (nur Kombikarte) | `true` |
 | `stat_abschlag` | Statistik-ID Abschlag je Monat | `einspeisung:abschlag_monat` |
-| `stat_abschlag_gesamt` | **Eingabe:** Statistik-ID Gesamtsumme | `einspeisung:abschlag_gesamt` |
+| `stat_abschlag_gesamt` | Statistik-ID Gesamtsumme (Eingabe) | `einspeisung:abschlag_gesamt` |
 | `stat_abrechnung` | Statistik-ID Abrechnung | `einspeisung:abrechnung` |
 | `stat_satz` | Statistik-ID Vergütungssatz (ct/kWh) | `einspeisung:verguetung_satz` |
-| `abschlag_vorgabe` | **Eingabe:** vorbelegter Abschlag in € für leere Monate | leer |
+| `abschlag_vorgabe` | vorbelegter Abschlag in € für leere Monate (Eingabe) | leer |
 
 Beide Karten müssen **dieselben** Statistik-IDs verwenden. Die Statistik-IDs haben das Format
 `quelle:name`; sie werden beim ersten Eintragen automatisch angelegt.
@@ -49,7 +52,7 @@ abgelehnt). Die Statistik entsteht mit dem ersten Eintrag in der Eingabekarte; b
 
 Beispiel (YAML):
 ```yaml
-type: custom:einspeiseverguetung-auswertung-card
+type: custom:einspeiseverguetung-card
 versorger: Stadtwerke
 quelle: sensor.pv_einspeisung_gesamt
 jahr_entity: input_select.pv_auswertungsjahr
