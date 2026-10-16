@@ -54,6 +54,12 @@ Alles ohne Helfer, Template-Sensoren oder YAML – alle Werte liegen in der **La
 ## Einrichtung
 Karte „Einspeisevergütung“ im Dashboard hinzufügen und im Editor einstellen:
 
+<p align="center">
+  <img alt="Konfiguration im Karteneditor" src="https://raw.githubusercontent.com/Hoffis-Welt/hacs-einspeiseverguetung/main/docs/editor.png" width="420">
+</p>
+
+*Der Karteneditor mit allen Konfigurationsfeldern (Darstellung der Eingabefelder vereinfacht, Beispielwerte).*
+
 | Feld | Bedeutung | Standard |
 |---|---|---|
 | `versorger` | Name des Einspeiseversorgers (Titel/Texte) | `Versorger` |
