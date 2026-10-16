@@ -40,7 +40,7 @@ Alles ohne Helfer, Template-Sensoren oder YAML – alle Werte liegen in der **La
 - **Eingabe**
   - monatliche Abschläge, Jahresabrechnung (Ausgleich) und Vergütungssätze **mit Gültig-ab-Datum** per Formular
   - Zeile antippen = ins Formular übernehmen; gleicher Monat/Jahr/Datum überschreibt
-- **Komplett im Karteneditor konfigurierbar**, inkl. Name des Einspeiseversorgers und „➕ Neu anlegen…“ für die Statistiken
+- **Nur drei Angaben nötig:** Versorgername, Einspeise-Zähler und optional ein Einspeisepreis. Alles andere legt die Karte intern selbst an
 - Passt sich dem Theme an (hell/dunkel)
 
 > **Beta (Version 0.x):** Die Karte ist im Alltag im Einsatz, wurde aber noch nicht von vielen Installationen getestet. Rückmeldungen und Fehler gerne als [Issue](https://github.com/Hoffis-Welt/hacs-einspeiseverguetung/issues) melden.
@@ -60,40 +60,29 @@ Alles ohne Helfer, Template-Sensoren oder YAML – alle Werte liegen in der **La
 4. Im Dashboard **Karte hinzufügen** → „Einspeisevergütung“
 
 ## Einrichtung
-Karte „Einspeisevergütung“ im Dashboard hinzufügen und im Editor einstellen:
+Karte „Einspeisevergütung“ im Dashboard hinzufügen. Im Editor sind nur drei Angaben nötig:
 
 <p align="center">
   <img alt="Konfiguration im Karteneditor" src="https://raw.githubusercontent.com/Hoffis-Welt/hacs-einspeiseverguetung/main/docs/editor.png" width="420">
 </p>
 
-*Der Karteneditor mit allen Konfigurationsfeldern (Darstellung der Eingabefelder vereinfacht, Beispielwerte).*
-
-| Feld | Bedeutung | Standard |
+| Feld | Bedeutung | Pflicht |
 |---|---|---|
-| `versorger` | Name des Einspeiseversorgers (Titel/Texte) | `Versorger` |
-| `titel` | Kartentitel (leer = automatisch) | – |
-| `quelle` | Einspeise-Zähler (kWh), Pflicht für die Auswertung | – |
-| `eingabe_anzeigen` | Reiter „Eingabe“ anzeigen (`false` = reine Anzeige) | `true` |
-| `stat_abschlag` | Statistik-ID Abschlag je Monat | `einspeisung:abschlag_monat` |
-| `stat_abschlag_gesamt` | Statistik-ID Gesamtsumme (Eingabe) | `einspeisung:abschlag_gesamt` |
-| `stat_abrechnung` | Statistik-ID Abrechnung | `einspeisung:abrechnung` |
-| `stat_satz` | Statistik-ID Vergütungssatz (ct/kWh) | `einspeisung:verguetung_satz` |
-| `abschlag_vorgabe` | vorbelegter Abschlag in € für leere Monate (Eingabe) | leer |
+| Name des Einspeiseversorgers | Wird in Titeln und Texten angezeigt (`versorger`) | ja |
+| Einspeise-Zähler | Zähler der eingespeisten Energie in kWh (`quelle`). Alle Monate werden rückwirkend aus seiner Langzeitstatistik berechnet, soweit der Zähler zurückreicht | ja |
+| Einspeisepreis | Optionale Entität in ct/kWh oder €/kWh (`preis`). Leer = Preis im Reiter „Eingabe“ mit Gültig-ab-Datum pflegen. Mit Entität wird deren Verlauf aus der Langzeitstatistik verwendet (ohne Verlauf der aktuelle Wert für alle Tage) | nein |
 
-Die Statistik-IDs haben das Format
-`quelle:name`; sie werden beim ersten Eintragen automatisch angelegt.
-
-**Statistik neu anlegen:** Im Karteneditor listet jedes Statistik-Feld die vorhandenen Statistiken. Mit
-„➕ Neu anlegen…“ gibst du eine neue ID ein (Vorschlag und Formatprüfung inklusive, Duplikate werden
-abgelehnt). Die Statistik entsteht mit dem ersten Eintrag im Reiter „Eingabe“; bis dahin zeigt die Karte
-„noch keine Daten“. Der Einspeise-Zähler (kWh) ist ein vorhandener Sensor und nur auswählbar.
+Alles andere läuft intern: Abschläge, Abrechnung und (ohne Preis-Entität) der Vergütungssatz werden automatisch in eigenen Statistiken gespeichert. Ihre Namen werden beim Anlegen der Karte vergeben (`instanz`, z. B. `einspeisung_x1y2z`) und ändern sich nicht, auch wenn du den Versorgernamen später änderst. Der Reiter „Eingabe“ erscheint nur für Administratoren.
 
 Beispiel (YAML):
 ```yaml
 type: custom:einspeiseverguetung-card
 versorger: Stadtwerke
 quelle: sensor.pv_einspeisung_gesamt
+preis: sensor.einspeisepreis   # optional
 ```
+
+Optional, nur per YAML: `titel` (Kartentitel), `eingabe_anzeigen: false` (Reiter „Eingabe“ ausblenden), `abschlag_vorgabe` (vorbelegter Abschlag in €). Eine kopierte Karte mit derselben `instanz` nutzt dieselben Daten.
 
 ### Erste Schritte
 1. Im Reiter **Eingabe** den **Vergütungssatz** eintragen (ct/kWh, ab Datum, z. B. Inbetriebnahme)
@@ -113,7 +102,7 @@ quelle: sensor.pv_einspeisung_gesamt
 - Der Satz gilt ab seinem Datum, frühere Zeiträume rechnen mit dem damals gültigen Satz.
 - Fehlende Abschläge werden in der Prognose mit dem zuletzt bekannten Abschlag angesetzt.
 - Ein Abrechnungs-Ausgleich von 0 gilt als „nicht eingetragen“.
-- Statistik-IDs nachträglich ändern übernimmt keine alten Daten.
+- Die internen Statistiken entstehen mit dem ersten Eintrag. Die Karte zeigt jedes Jahr, für das der Zähler Daten hat.
 
 ## Lizenz
 MIT

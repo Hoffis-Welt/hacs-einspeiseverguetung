@@ -6,24 +6,58 @@
  * (Die Reiter sind intern als eigene Elemente umgesetzt, in der Kartenauswahl erscheint nur die Karte.)
  * Lizenz: MIT
  */
-const EWA_VERSION = '0.9.0';
+const EWA_VERSION = '0.10.0';
 
 /* ---------- gemeinsame Hilfen ---------- */
 const EWA_DEF = {
   versorger: 'Versorger',
-  stat_abschlag: 'einspeisung:abschlag_monat',
-  stat_abschlag_gesamt: 'einspeisung:abschlag_gesamt',
-  stat_abrechnung: 'einspeisung:abrechnung',
-  stat_satz: 'einspeisung:verguetung_satz',
   quelle: '',
-  eingabe_anzeigen: true
+  preis: ''
 };
-const EWA_STATE = { year: new Date().getFullYear() };
+const EWA_STATE = { year: new Date().getFullYear(), minYear: {} };
 
-// Jahr: interne Auswahl (gemeinsam für alle Karten auf der Seite)
-function ewaYear() {
+// Interne Statistiken: Name = Kennung der Karte + fester Bezeichner. Die Kennung (instanz) wird beim Anlegen der
+// Karte automatisch erzeugt und nie geändert. Ältere Konfigurationen mit stat_*-Feldern laufen unverändert weiter.
+const EWA_BASE = { stat_abschlag: 'abschlag_monat', stat_abschlag_gesamt: 'abschlag_gesamt', stat_abrechnung: 'abrechnung', stat_satz: 'verguetung_satz' };
+function ewaNewId() {
+  const c = 'abcdefghijklmnopqrstuvwxyz0123456789'; let r = '';
+  for (let i = 0; i < 5; i++) r += c[Math.floor(Math.random() * c.length)];
+  return 'einspeisung_' + r;
+}
+function ewaPrefix(cfg) {
+  if (cfg.instanz) return cfg.instanz;
+  const k = cfg.stat_abschlag || cfg.stat_abrechnung || cfg.stat_satz;
+  if (k && String(k).includes(':')) return String(k).split(':')[0];
+  return 'einspeisung';
+}
+function ewaStat(cfg, key) { return cfg[key] || (ewaPrefix(cfg) + ':' + EWA_BASE[key]); }
+
+// Externer Einspeisepreis: Verlauf aus der Langzeitstatistik der Entität, sonst der aktuelle Wert. Ergebnis in ct/kWh.
+async function ewaExtRates(hass, cfg) {
+  const st = hass.states[cfg.preis];
+  const unit = String((st && st.attributes && st.attributes.unit_of_measurement) || '');
+  const conv = (v) => {
+    if (/ct|cent/i.test(unit)) return v;
+    if (/€|eur/i.test(unit)) return v * 100;
+    return v < 1 ? v * 100 : v;
+  };
+  let rows = [];
+  try {
+    const r = await hass.callWS({ type: 'recorder/statistics_during_period', start_time: '2000-01-01T00:00:00Z', statistic_ids: [cfg.preis], period: 'day', types: ['mean'] });
+    rows = (r[cfg.preis] || []).filter((x) => x.mean !== null && x.mean !== undefined).map((x) => ({ start: x.start, mean: conv(x.mean) }));
+  } catch (e) { rows = []; }
+  if (!rows.length) {
+    const v = parseFloat(st && st.state);
+    if (!isNaN(v)) rows = [{ start: 0, mean: conv(v) }];
+  }
+  return rows.sort((a, b) => a.start - b.start);
+}
+
+// Jahr: interne Auswahl (gemeinsam für alle Karten auf der Seite), beginnt im ersten Jahr der Zählerdaten
+function ewaYear(hass, cfg) {
+  const first = (cfg && EWA_STATE.minYear[cfg.quelle]) || new Date().getFullYear();
   const opts = [];
-  for (let y = 2020; y <= new Date().getFullYear() + 1; y++) opts.push(String(y));
+  for (let y = first; y <= new Date().getFullYear() + 1; y++) opts.push(String(y));
   return { year: EWA_STATE.year, options: opts };
 }
 function ewaSetYear(hass, cfg, opt) {
@@ -31,24 +65,17 @@ function ewaSetYear(hass, cfg, opt) {
   window.dispatchEvent(new Event('ewa-year'));
 }
 function ewaSource(id) { return String(id).split(':')[0]; }
-const EWA_FIELDS = (extra) => ({
-  computeLabel: (s) => ({
+const EWA_FIELDS = () => ({
+  computeLabel: (f) => ({
     versorger: 'Name des Einspeiseversorgers',
-    titel: 'Titel der Karte (leer = automatisch)',
-    stat_abschlag: 'Statistik: Abschlag monatlich',
-    stat_abschlag_gesamt: 'Statistik: Abschlag Gesamtsumme',
-    stat_abrechnung: 'Statistik: Abrechnung (Ausgleich)',
-    stat_satz: 'Statistik: Vergütungssatz (ct/kWh)',
-    quelle: 'Einspeise-Zähler (kWh, mit Langzeitstatistik)',
-    eingabe_anzeigen: 'Reiter „Eingabe“ anzeigen',
-    abschlag_vorgabe: 'Vorbelegter Abschlag für leere Monate (optional)'
-  }[s.name] || s.name),
-  computeHelper: (s) => ({
+    quelle: 'Einspeise-Zähler (kWh)',
+    preis: 'Einspeisepreis (optional)'
+  }[f.name] || f.name),
+  computeHelper: (f) => ({
     versorger: 'Wird in Titeln und Texten angezeigt.',
-    stat_abschlag: 'Format quelle:name, z. B. einspeisung:abschlag_monat. Der Teil vor dem Doppelpunkt ist die Quelle.',
-    quelle: 'Aufsteigender Zähler der eingespeisten Energie; die Tagesdifferenz wird bewertet.',
-    eingabe_anzeigen: 'Ausschalten für eine reine Anzeigekarte (z. B. für Benutzer ohne Admin-Rechte).'
-  }[s.name] || '')
+    quelle: 'Aufsteigender Zähler der eingespeisten Energie mit Langzeitstatistik. Daraus werden alle Monate rückwirkend berechnet.',
+    preis: 'Leer lassen: Preis im Reiter „Eingabe“ mit Gültig-ab-Datum pflegen. Oder eine Entität wählen (ct/kWh oder €/kWh), dann wird deren Verlauf verwendet.'
+  }[f.name] || '')
 });
 
 /* ---------- Reiter Eingabe ---------- */
@@ -139,6 +166,10 @@ class EwaEingabeCard extends HTMLElement {
   }
   _mode() {
     const q = (s) => this._r.querySelector(s);
+    const ext = !!this._config.preis;
+    const so = q('#art option[value="satz"]');
+    so.hidden = ext; so.disabled = ext;
+    if (ext && q('#art').value === 'satz') q('#art').value = 'abschlag';
     const a = q('#art').value;
     const V = this._v();
     q('#lblm').style.display = a === 'abschlag' ? '' : 'none';
@@ -188,24 +219,24 @@ class EwaEingabeCard extends HTMLElement {
         if (!mv) { this._msg('Bitte einen Monat wählen.', true); btn.disabled = false; return; }
         const [y, m] = mv.split('-').map(Number);
         const start = new Date(y, m - 1, 1, 0, 0, 0);
-        const rows = await this._fetch(c.stat_abschlag, 'month');
+        const rows = await this._fetch(ewaStat(c, 'stat_abschlag'), 'month');
         const map = {};
         rows.forEach((r) => { map[this._key(r.start)] = r.mean; });
         map[y + '-' + String(m).padStart(2, '0')] = rounded;
-        await this._import(c.stat_abschlag, V + ' Abschlag Monat', false, [{ start: start.toISOString(), mean: rounded, min: rounded, max: rounded }]);
+        await this._import(ewaStat(c, 'stat_abschlag'), V + ' Abschlag Monat', false, [{ start: start.toISOString(), mean: rounded, min: rounded, max: rounded }]);
         let sum = 0;
         const stats = Object.keys(map).sort().map((k) => {
           const [yy, mm] = k.split('-').map(Number);
           sum = Math.round((sum + map[k]) * 100) / 100;
           return { start: new Date(yy, mm - 1, 1, 0, 0, 0).toISOString(), state: sum, sum: sum };
         });
-        await this._import(c.stat_abschlag_gesamt, V + ' Abschlag Gesamt', true, stats);
+        await this._import(ewaStat(c, 'stat_abschlag_gesamt'), V + ' Abschlag Gesamt', true, stats);
         this._msg('Abschlag ' + String(m).padStart(2, '0') + '/' + y + ' gespeichert: ' + this._fmt(rounded), false);
       } else if (art === 'abrechnung') {
         const y = parseInt(q('#datum').value);
         if (isNaN(y) || y < 2000 || y > 2100) { this._msg('Bitte ein gültiges Jahr eingeben.', true); btn.disabled = false; return; }
         const start = new Date(y, 11, 31, 0, 0, 0);
-        await this._import(c.stat_abrechnung, V + ' Abrechnung', false, [{ start: start.toISOString(), mean: rounded, min: rounded, max: rounded }]);
+        await this._import(ewaStat(c, 'stat_abrechnung'), V + ' Abrechnung', false, [{ start: start.toISOString(), mean: rounded, min: rounded, max: rounded }]);
         this._msg('Abrechnung für ' + y + ' gespeichert: ' + this._fmt(rounded), false);
       } else {
         const dv = q('#sdatum').value;
@@ -213,7 +244,7 @@ class EwaEingabeCard extends HTMLElement {
         if (rounded <= 0 || rounded > 100) { this._msg('Der Satz muss zwischen 0 und 100 ct/kWh liegen.', true); btn.disabled = false; return; }
         const [y, m, d] = dv.split('-').map(Number);
         const start = new Date(y, m - 1, d, 0, 0, 0);
-        await this._import(c.stat_satz, V + ' Vergütungssatz', false, [{ start: start.toISOString(), mean: rounded, min: rounded, max: rounded }], 'ct/kWh');
+        await this._import(ewaStat(c, 'stat_satz'), V + ' Vergütungssatz', false, [{ start: start.toISOString(), mean: rounded, min: rounded, max: rounded }], 'ct/kWh');
         this._msg('Vergütungssatz ab ' + dv + ' gespeichert: ' + this._fmtS(rounded), false);
       }
       setTimeout(() => { this._load(); window.dispatchEvent(new Event('ewa-updated')); }, 1500);
@@ -225,9 +256,9 @@ class EwaEingabeCard extends HTMLElement {
   async _load() {
     try {
       const c = this._config;
-      const mon = await this._fetch(c.stat_abschlag, 'month');
-      const abr = await this._fetch(c.stat_abrechnung, 'day');
-      const sat = await this._fetch(c.stat_satz, 'day');
+      const mon = await this._fetch(ewaStat(c, 'stat_abschlag'), 'month');
+      const abr = await this._fetch(ewaStat(c, 'stat_abrechnung'), 'day');
+      const sat = c.preis ? [] : await this._fetch(ewaStat(c, 'stat_satz'), 'day');
       this._val = {}; this._last = null;
       mon.slice().sort((a, b) => a.start - b.start).forEach((r) => {
         this._val[this._key(r.start)] = r.mean; this._last = r.mean;
@@ -235,11 +266,9 @@ class EwaEingabeCard extends HTMLElement {
       this._abr = abr;
       this._sat = sat.slice().sort((a, b) => b.start - a.start);
       this._render();
-      const miss = [];
-      if (!mon.length) miss.push(c.stat_abschlag);
-      if (!abr.length) miss.push(c.stat_abrechnung);
-      if (!sat.length) miss.push(c.stat_satz);
-      if (miss.length) this._msg('Noch keine Daten in: ' + miss.join(', ') + '. Der erste Eintrag legt die Statistik an.', false);
+      if (!mon.length && !abr.length && !sat.length) {
+        this._msg(c.preis ? 'Noch keine Einträge. Beginne mit den monatlichen Abschlägen.' : 'Noch keine Einträge. Beginne mit dem Vergütungssatz und den monatlichen Abschlägen.', false);
+      }
     } catch (e) {
       this._msg('Laden fehlgeschlagen: ' + (e.message || JSON.stringify(e)), true);
     }
@@ -274,7 +303,7 @@ class EwaEingabeCard extends HTMLElement {
       '<h3><button class="nav" id="prev"' + (hasPrev ? '' : ' disabled') + '>◀</button> Abschläge ' + y + ' <button class="nav" id="next"' + (hasNext ? '' : ' disabled') + '>▶</button></h3>' +
       '<table><tr><th>Monat</th><th class="n">Abschlag</th><th class="n">Summe ' + y + '</th></tr>' + mhtml + '</table>' +
       '<h3>Abrechnungen</h3><table><tr><th>Jahr</th><th class="n">Ausgleich</th></tr>' + (ahtml || '<tr><td colspan="2">Noch keine Einträge</td></tr>') + '</table>' +
-      '<h3>Vergütungssätze</h3><table><tr><th>Gültig</th><th class="n">Satz</th></tr>' + (shtml || '<tr><td colspan="2">Noch kein Satz eingetragen</td></tr>') + '</table>' +
+      (this._config.preis ? '<h3>Vergütungssatz</h3><div class="hint">Kommt aus der Entität ' + this._config.preis + '.</div>' : '<h3>Vergütungssätze</h3><table><tr><th>Gültig</th><th class="n">Satz</th></tr>' + (shtml || '<tr><td colspan="2">Noch kein Satz eingetragen</td></tr>') + '</table>') +
       '<div class="hint">Zeile antippen, um sie ins Formular zu übernehmen. Leere Monate (–) sind noch nicht eingetragen.</div>';
     this._r.querySelector('#prev').addEventListener('click', () => this._step(-1));
     this._r.querySelector('#next').addEventListener('click', () => this._step(1));
@@ -352,20 +381,28 @@ class EwaAuswertungCard extends HTMLElement {
     const C = this._c; const V = C.versorger || 'Versorger';
     try {
       if (!C.quelle) throw new Error('Bitte in der Kartenkonfiguration den Einspeise-Zähler (kWh) auswählen.');
+      if (EWA_STATE.minYear[C.quelle] === undefined) {
+        EWA_STATE.minYear[C.quelle] = 0;
+        try {
+          const f = await h.callWS({ type: 'recorder/statistics_during_period', start_time: '2000-01-01T00:00:00Z', statistic_ids: [C.quelle], period: 'month', types: ['change'] });
+          const rows = (f[C.quelle] || []).filter((x) => x.change !== null && x.change !== undefined);
+          if (rows.length) EWA_STATE.minYear[C.quelle] = new Date(rows[0].start).getFullYear();
+        } catch (e) { /* Jahresliste bleibt auf dem aktuellen Jahr */ }
+      }
       const yi = ewaYear(h, C);
       const y = yi.year;
       const idx = yi.options.indexOf(String(y));
       const hasPrev = idx > 0; const hasNext = idx > -1 && idx < yi.options.length - 1;
       const now = new Date(); const cy = now.getFullYear(); const cm = now.getMonth();
-      const tib = C.quelle; const sAb = C.stat_abschlag; const sAbr = C.stat_abrechnung; const sSatz = C.stat_satz;
+      const tib = C.quelle; const sAb = ewaStat(C, 'stat_abschlag'); const sAbr = ewaStat(C, 'stat_abrechnung'); const sSatz = ewaStat(C, 'stat_satz');
       const q = (ids, s, e, types, period) => h.callWS({ type: 'recorder/statistics_during_period', start_time: s.toISOString(), end_time: e.toISOString(), statistic_ids: ids, period: period, types: types });
       const [a, b, c, r] = await Promise.all([
         q([tib], new Date(y - 1, 0, 1), new Date(y + 1, 0, 1), ['change'], 'day'),
         q([sAb], new Date(y, 0, 1), new Date(y + 1, 0, 1), ['mean'], 'month'),
         q([sAbr], new Date(y, 0, 1), new Date(y + 1, 0, 1), ['mean'], 'month'),
-        h.callWS({ type: 'recorder/statistics_during_period', start_time: '2020-01-01T00:00:00Z', statistic_ids: [sSatz], period: 'day', types: ['mean'] })
+        C.preis ? ewaExtRates(h, C) : h.callWS({ type: 'recorder/statistics_during_period', start_time: '2000-01-01T00:00:00Z', statistic_ids: [sSatz], period: 'day', types: ['mean'] })
       ]);
-      const rates = (r[sSatz] || []).filter((x) => x.mean !== null && x.mean !== undefined).sort((p, s) => p.start - s.start);
+      const rates = C.preis ? r : (r[sSatz] || []).filter((x) => x.mean !== null && x.mean !== undefined).sort((p, s) => p.start - s.start);
       const rateAt = (ms) => {
         if (!rates.length) return 0;
         let v = rates[0].mean;
@@ -417,13 +454,14 @@ class EwaAuswertungCard extends HTMLElement {
       const saldoRow = '<tr class="res"><td class="lbl" colspan="3">Saldo ' + y + '<small>' + endLbl + ': ' + (saldo >= 0 ? 'Der Versorger (' + V + ') schuldet dir noch Geld' : 'Du hast mehr erhalten als vergütet') + '</small></td><td colspan="2" class="' + sgn(saldo) + '">' + this._f(Math.abs(saldo), 2) + ' € ' + (saldo >= 0 ? 'Guthaben' : 'Rückzahlung') + '</td></tr>';
       const progRow = '<tr class="res"><td class="lbl" colspan="3">Prognose Jahresende<small>' + (prog !== null ? (y === cy ? 'Restmonate wie im Vorjahr, alle 12 Abschläge' : 'Endsaldo mit allen 12 Abschlägen') : 'Jahr noch nicht begonnen') + '</small></td>' + (prog !== null ? '<td colspan="2" class="' + sgn(prog) + '">' + this._f(Math.abs(prog), 2) + ' € ' + (prog >= 0 ? 'Nachzahlung an dich' : 'Rückzahlung von dir') + '</td>' : '<td colspan="2">–</td>') + '</tr>';
       let html = '<h3><button class="nav" id="prev"' + (hasPrev ? '' : ' disabled') + '>◀</button> ' + (C.titel ? C.titel + ' ' : 'Auswertung ') + y + ' <button class="nav" id="next"' + (hasNext ? '' : ' disabled') + '>▶</button></h3>' +
-        '<div class="sum"><b>Einspeisung ' + y + ':</b> ' + this._f(kwhSum, 0) + ' kWh<br><b>Aktueller Satz:</b> ' + (rates.length ? this._f(curRate, 2) + ' ct/kWh' : 'nicht eingetragen') + '<br><b>Vergütung:</b> ' + this._f(vergSum, 2) + ' €<br><b>' + V + '-Abschläge:</b> ' + this._f(abSum, 2) + ' €';
+        '<div class="sum"><b>Einspeisung ' + y + ':</b> ' + this._f(kwhSum, 0) + ' kWh<br><b>Aktueller Satz:</b> ' + (rates.length ? this._f(curRate, 2) + ' ct/kWh' : (C.preis ? 'nicht verfügbar' : 'nicht eingetragen')) + '<br><b>Vergütung:</b> ' + this._f(vergSum, 2) + ' €<br><b>' + V + '-Abschläge:</b> ' + this._f(abSum, 2) + ' €';
       if (ausgleich !== null) {
         const ges = abAll + ausgleich; const abw = ges - vergAll;
         html += '<br><b>' + V + '-Abrechnung:</b> Ausgleich ' + this._f(ausgleich, 2) + ' € (Gesamtvergütung ' + this._f(ges, 2) + ' €)<br><b>Abweichung zu meiner Berechnung:</b> <span class="' + sgn(abw) + '">' + this._f(abw, 2) + ' €</span>';
       } else if (y <= cy) {
         html += '<br><b>' + V + '-Abrechnung:</b> noch nicht eingetragen';
       }
+      if (!rates.length && !C.preis) html += '<br><i>Tipp: Trage im Reiter „Eingabe“ den Vergütungssatz und die Abschläge ein.</i>';
       html += '</div><table><tr><th>Monat</th><th>kWh</th><th>Vergütung</th><th>Abschlag</th><th>Differenz</th></tr>' + tbl +
         '<tr class="tot"><td>Summe bis heute</td><td>' + this._f(kwhSum, 0) + '</td><td>' + this._f(vergSum, 2) + ' €</td><td>' + this._f(abSum, 2) + ' €</td><td class="' + sgn(saldo) + '">' + this._f(saldo, 2) + ' €</td></tr>' +
         saldoRow + progRow + '</table>' +
@@ -443,7 +481,7 @@ class EwaCombinedCard extends HTMLElement {
     const e = document.createElement('einspeiseverguetung-karten-editor');
     return e;
   }
-  static getStubConfig() { return Object.assign({}, EWA_DEF); }
+  static getStubConfig() { return { versorger: 'Versorger', instanz: ewaNewId() }; }
   constructor() {
     super();
     this._tab = 'auswertung';
@@ -476,7 +514,8 @@ class EwaCombinedCard extends HTMLElement {
   }
   _show() {
     const r = this.shadowRoot;
-    const withIn = this._config.eingabe_anzeigen !== false;
+    const admin = !(this._hass && this._hass.user && this._hass.user.is_admin === false);
+    const withIn = this._config.eingabe_anzeigen !== false && admin;
     if (!withIn) this._tab = 'auswertung';
     r.querySelector('#tabs').style.display = withIn ? '' : 'none';
     r.querySelector('#a').style.display = this._tab === 'auswertung' ? '' : 'none';
@@ -484,25 +523,14 @@ class EwaCombinedCard extends HTMLElement {
     r.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.t === this._tab));
   }
   getCardSize() { return 12; }
-  set hass(h) { this._hass = h; this._aus.hass = h; this._ein.hass = h; }
+  set hass(h) { this._hass = h; this._aus.hass = h; this._ein.hass = h; this._show(); }
 }
 
-/* ---------- Karteneditor (vorhandene Statistik wählen oder neu anlegen) ---------- */
-const EWA_ID_RE = /^(?!.*__)(?!_)[\da-z_]+(?<!_):(?!_)(?!.*__)[\da-z_]+(?<!_)$/;
-const EWA_NEW = '__new__';
-const EWA_STAT_BASE = {
-  stat_abschlag: 'abschlag_monat',
-  stat_abschlag_gesamt: 'abschlag_gesamt',
-  stat_abrechnung: 'abrechnung',
-  stat_satz: 'verguetung_satz'
-};
-
+/* ---------- Karteneditor: nur Versorgername, Einspeise-Zähler und (optional) Preis ---------- */
 class EwaKartenEditor extends HTMLElement {
   constructor() {
     super();
     this._cfg = Object.assign({}, EWA_DEF);
-    this._ids = [];
-    this._newMode = {};
     this.attachShadow({ mode: 'open' });
   }
   setConfig(c) {
@@ -512,17 +540,8 @@ class EwaKartenEditor extends HTMLElement {
     this._render();
   }
   set hass(h) {
-    const first = !this._hass;
     this._hass = h;
-    if (this._forms) this._forms.forEach((f) => { f.hass = h; });
-    if (first) this._loadIds();
-  }
-  async _loadIds() {
-    try {
-      const l = await this._hass.callWS({ type: 'recorder/list_statistic_ids' });
-      this._ids = (l || []).filter((x) => String(x.statistic_id).includes(':') && x.source !== 'recorder');
-    } catch (e) { this._ids = []; }
-    this._render();
+    if (this._form) this._form.hass = h;
   }
   _emit(patch) {
     this._cfg = Object.assign({}, this._cfg, patch);
@@ -532,114 +551,26 @@ class EwaKartenEditor extends HTMLElement {
       const v = this._cfg[k];
       if (v !== '' && v !== null && v !== undefined) out[k] = v;
     });
+    // Kennung für die internen Statistiken einmalig vergeben (ältere Konfigurationen mit stat_*-Feldern behalten ihre)
+    if (!out.instanz && !out.stat_abschlag && !out.stat_abrechnung && !out.stat_satz) { out.instanz = ewaNewId(); this._cfg.instanz = out.instanz; }
     this._emitted = JSON.stringify(out);
     this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: out }, bubbles: true, composed: true }));
   }
-  _used(except) {
-    const keys = ['stat_abschlag', 'stat_abschlag_gesamt', 'stat_abrechnung', 'stat_satz'];
-    return keys.filter((k) => k !== except).map((k) => this._cfg[k]).filter(Boolean);
-  }
-  _suggest(key) {
-    const known = ['stat_abschlag', 'stat_abrechnung', 'stat_satz', 'stat_abschlag_gesamt'].map((k) => this._cfg[k]).find((v) => v && String(v).includes(':'));
-    const prefix = known ? String(known).split(':')[0] : 'einspeisung';
-    const taken = new Set(this._ids.map((x) => x.statistic_id).concat(this._used(key)));
-    let id = prefix + ':' + EWA_STAT_BASE[key]; let n = 2;
-    while (taken.has(id)) { id = prefix + ':' + EWA_STAT_BASE[key] + '_' + n; n++; }
-    return id;
-  }
-  _validate(key, id) {
-    if (!EWA_ID_RE.test(id)) return 'Format: quelle:name, nur Kleinbuchstaben, Ziffern und Unterstriche (z. B. einspeisung:abschlag_monat).';
-    if (id.split(':')[0] === 'recorder') return 'Die Quelle "recorder" ist nicht erlaubt.';
-    if (this._ids.some((x) => x.statistic_id === id)) return 'Diese Statistik gibt es schon – bitte oben in der Liste auswählen.';
-    if (this._used(key).includes(id)) return 'Diese ID wird bereits für ein anderes Feld verwendet.';
-    return '';
-  }
-  _statField(key, label, help) {
-    const wrap = document.createElement('div');
-    wrap.className = 'fld';
-    const cur = this._cfg[key] || '';
-    const exists = this._ids.some((x) => x.statistic_id === cur);
-    const sel = document.createElement('select');
-    const add = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); };
-    this._ids.forEach((x) => add(x.statistic_id, (x.name || x.statistic_id) + '  ·  ' + x.statistic_id));
-    if (cur && !exists) add(cur, cur + '  (noch keine Daten)');
-    add(EWA_NEW, '➕ Neu anlegen…');
-    sel.value = this._newMode[key] ? EWA_NEW : (cur || EWA_NEW);
-    wrap.innerHTML = '<label></label><div class="help"></div>';
-    wrap.querySelector('label').textContent = label;
-    wrap.querySelector('.help').textContent = help;
-    wrap.insertBefore(sel, wrap.querySelector('.help'));
-    sel.addEventListener('change', () => {
-      if (sel.value === EWA_NEW) { this._newMode[key] = true; this._render(); return; }
-      this._newMode[key] = false;
-      this._emit({ [key]: sel.value });
-      this._render();
-    });
-    if (this._newMode[key]) {
-      const box = document.createElement('div');
-      box.className = 'newbox';
-      const inp = document.createElement('input');
-      inp.type = 'text'; inp.value = this._newVal && this._newVal[key] !== undefined ? this._newVal[key] : this._suggest(key);
-      const msg = document.createElement('div'); msg.className = 'msg';
-      const btn = document.createElement('button'); btn.type = 'button'; btn.textContent = 'Übernehmen';
-      const check = () => { const m = this._validate(key, inp.value.trim()); msg.textContent = m; btn.disabled = !!m; };
-      inp.addEventListener('input', () => { this._newVal = this._newVal || {}; this._newVal[key] = inp.value; check(); });
-      const apply = () => {
-        const id = inp.value.trim();
-        if (this._validate(key, id)) return;
-        this._newMode[key] = false; if (this._newVal) delete this._newVal[key];
-        this._emit({ [key]: id });
-        this._render();
-      };
-      btn.addEventListener('click', apply);
-      inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); apply(); } });
-      box.appendChild(inp); box.appendChild(btn); box.appendChild(msg);
-      const hint = document.createElement('div'); hint.className = 'help';
-      hint.textContent = 'Neue Statistik: Sie wird mit dem ersten Eintrag im Reiter „Eingabe“ angelegt. Bis dahin zeigt die Karte „noch keine Daten“.';
-      box.appendChild(hint);
-      wrap.appendChild(box);
-      setTimeout(check, 0);
-    }
-    return wrap;
-  }
-  _form(schema) {
+  _render() {
+    const r = this.shadowRoot;
+    r.innerHTML = '';
     const f = document.createElement('ha-form');
-    f.hass = this._hass; f.data = this._cfg; f.schema = schema;
+    f.hass = this._hass; f.data = this._cfg;
+    f.schema = [
+      { name: 'versorger', selector: { text: {} } },
+      { name: 'quelle', selector: { entity: { domain: 'sensor' } } },
+      { name: 'preis', selector: { entity: { domain: ['sensor', 'input_number', 'number'] } } }
+    ];
     const fields = EWA_FIELDS();
     f.computeLabel = fields.computeLabel; f.computeHelper = fields.computeHelper;
     f.addEventListener('value-changed', (e) => { e.stopPropagation(); this._emit(e.detail.value); });
-    this._forms.push(f);
-    return f;
-  }
-  _render() {
-    const r = this.shadowRoot;
-    r.innerHTML = `<style>
-      .fld { margin: 14px 0; }
-      .fld label { display: block; font-size: 0.9em; margin-bottom: 4px; color: var(--primary-text-color); }
-      select, input[type=text] { width: 100%; box-sizing: border-box; font: inherit; padding: 10px; border-radius: 8px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color); }
-      .help { font-size: 0.8em; color: var(--secondary-text-color); margin-top: 4px; }
-      .newbox { margin-top: 8px; padding: 10px; border-left: 3px solid var(--primary-color); display: flex; flex-direction: column; gap: 6px; }
-      .newbox button { align-self: flex-start; font: inherit; padding: 6px 14px; border-radius: 8px; border: 0; cursor: pointer; background: var(--primary-color); color: var(--text-primary-color, #fff); }
-      .newbox button:disabled { opacity: .4; cursor: default; }
-      .msg { font-size: 0.82em; color: var(--error-color, #d9534f); min-height: 1em; }
-      h4 { margin: 18px 0 0; font-size: 0.95em; font-weight: 500; }
-    </style>`;
-    this._forms = [];
-    const top = [
-      { name: 'versorger', selector: { text: {} } },
-      { name: 'titel', selector: { text: {} } }
-    ];
-    top.push({ name: 'quelle', selector: { entity: { domain: 'sensor' } } });
-    top.push({ name: 'eingabe_anzeigen', selector: { boolean: {} } });
-    r.appendChild(this._form(top));
-    const h = document.createElement('h4'); h.textContent = 'Statistiken (vorhanden wählen oder neu anlegen)';
-    r.appendChild(h);
-    const help = 'Format quelle:name, z. B. einspeisung:abschlag_monat.';
-    r.appendChild(this._statField('stat_abschlag', 'Statistik: Abschlag monatlich', help));
-    r.appendChild(this._statField('stat_abschlag_gesamt', 'Statistik: Abschlag Gesamtsumme', help));
-    r.appendChild(this._statField('stat_abrechnung', 'Statistik: Abrechnung (Ausgleich)', help));
-    r.appendChild(this._statField('stat_satz', 'Statistik: Vergütungssatz (ct/kWh)', help));
-    r.appendChild(this._form([{ name: 'abschlag_vorgabe', selector: { number: { min: 0, max: 10000, step: 0.01, mode: 'box', unit_of_measurement: '€' } } }]));
+    r.appendChild(f);
+    this._form = f;
   }
 }
 
