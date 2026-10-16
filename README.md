@@ -1,20 +1,43 @@
-# Einspeisevergütung Karten für Home Assistant
+<h1 align="center">☀️ Einspeisevergütung Karten</h1>
 
-Zwei Dashboard-Karten, um die **Einspeisevergütung** und die **Abschläge** des Netzbetreibers/Versorgers
-zu erfassen und auszuwerten – ohne Helfer, Template-Sensoren oder YAML. Alle Werte liegen in der
-**Langzeitstatistik** von Home Assistant.
+<p align="center">
+  <b>Behalte im Blick, was dir dein Versorger für den PV-Strom schuldet – Abschläge, Vergütung und Saldo in einer Dashboard-Karte.</b>
+</p>
+
+<p align="center">
+  <a href="https://github.com/hacs/integration"><img alt="HACS Custom" src="https://img.shields.io/badge/HACS-Custom-41BDF5.svg"></a>
+  <img alt="Home Assistant" src="https://img.shields.io/badge/Home%20Assistant-2024.x%2B-03a9f4.svg">
+  <img alt="Lizenz MIT" src="https://img.shields.io/badge/Lizenz-MIT-green.svg">
+</p>
+
+<p align="center">
+  <img alt="Auswertung" src="https://raw.githubusercontent.com/Hoffis-Welt/hacs-einspeiseverguetung/main/docs/auswertung.png" width="720">
+</p>
+
+Die Karte vergleicht die **Einspeisevergütung** (kWh je Tag × am Tag gültiger Satz) mit den **monatlichen
+Abschlägen** des Netzbetreibers/Versorgers und zeigt den **Saldo** sowie eine **Prognose zum Jahresende**.
+Alles ohne Helfer, Template-Sensoren oder YAML – alle Werte liegen in der **Langzeitstatistik** von Home Assistant.
+
+## Screenshots
+
+| Auswertung | Eingabe | Dunkles Theme |
+|:---:|:---:|:---:|
+| <img alt="Auswertung" src="https://raw.githubusercontent.com/Hoffis-Welt/hacs-einspeiseverguetung/main/docs/auswertung.png" width="300"> | <img alt="Eingabe" src="https://raw.githubusercontent.com/Hoffis-Welt/hacs-einspeiseverguetung/main/docs/eingabe.png" width="300"> | <img alt="Dunkles Theme" src="https://raw.githubusercontent.com/Hoffis-Welt/hacs-einspeiseverguetung/main/docs/auswertung-dark.png" width="300"> |
+
+*Die Screenshots zeigen Beispieldaten.*
 
 ## Funktionen
-- **Eine Karte für alles** (`custom:einspeiseverguetung-card`) mit den Reitern **Auswertung** und **Eingabe**: einmal konfigurieren, fertig. Der Eingabe-Reiter lässt sich ausblenden (reine Anzeigekarte).
-- Die beiden Reiter gibt es auch als einzelne Karten (nur für bestehende Dashboards, in der Kartenauswahl erscheint nur die Kombikarte):
-- **Eingabekarte** (`custom:einspeiseverguetung-eingabe-card`)
+- **Eine Karte für alles** (`custom:einspeiseverguetung-card`) mit den Reitern **Auswertung** und **Eingabe** – einmal konfigurieren, fertig. Der Eingabe-Reiter lässt sich ausblenden (reine Anzeigekarte).
+- **Auswertung**
+  - Monatstabelle: kWh, Vergütung, Abschlag, Differenz
+  - Summe, **Saldo** (wer schuldet wem wie viel), **Prognose Jahresende**, Abweichung zur Abrechnung
+  - Jahr umschalten mit ◀ ▶
+- **Eingabe**
   - monatliche Abschläge, Jahresabrechnung (Ausgleich) und Vergütungssätze **mit Gültig-ab-Datum** per Formular
   - Zeile antippen = ins Formular übernehmen; gleicher Monat/Jahr/Datum überschreibt
-- **Auswertungskarte** (`custom:einspeiseverguetung-auswertung-card`)
-  - Monatstabelle: kWh, Vergütung (kWh je Tag × am Tag gültiger Satz), Abschlag, Differenz
-  - Summe, **Saldo** und **Prognose Jahresende**, Abweichung zur Abrechnung
-- Jahr umschalten mit ◀ ▶ (beide Karten synchron)
-- Konfiguration komplett im Karteneditor, inkl. **Name des Einspeiseversorgers**
+- **Komplett im Karteneditor konfigurierbar**, inkl. Name des Einspeiseversorgers und „➕ Neu anlegen…“ für die Statistiken
+- Passt sich dem Theme an (hell/dunkel)
+- Die beiden Reiter gibt es für bestehende Dashboards auch als Einzelkarten (`…-eingabe-card`, `…-auswertung-card`); in der Kartenauswahl erscheint nur die Kombikarte.
 
 ## Voraussetzungen
 - Home Assistant 2024.x oder neuer mit Recorder
