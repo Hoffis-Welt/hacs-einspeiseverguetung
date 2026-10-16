@@ -31,7 +31,7 @@ Alles ohne Helfer, Template-Sensoren oder YAML – alle Werte liegen in der **La
 - **Auswertung**
   - Monatstabelle: kWh, Vergütung, Abschlag, Differenz
   - Summe, **Saldo** (wer schuldet wem wie viel), **Prognose Jahresende**, Abweichung zur Abrechnung
-  - Jahr umschalten mit ◀ ▶
+  - Jahr umschalten mit ◀ ▶ (gilt für alle Karten auf der Seite, ohne Hilfsentität)
 - **Eingabe**
   - monatliche Abschläge, Jahresabrechnung (Ausgleich) und Vergütungssätze **mit Gültig-ab-Datum** per Formular
   - Zeile antippen = ins Formular übernehmen; gleicher Monat/Jahr/Datum überschreibt
@@ -56,7 +56,6 @@ Karte „Einspeisevergütung“ im Dashboard hinzufügen und im Editor einstelle
 |---|---|---|
 | `versorger` | Name des Einspeiseversorgers (Titel/Texte) | `Versorger` |
 | `titel` | Kartentitel (leer = automatisch) | – |
-| `jahr_entity` | optional: `input_select` mit den Jahren als Optionen. Leer = interne Jahresauswahl. Mit Entität schalten beide Karten gemeinsam und merken sich das Jahr | leer |
 | `quelle` | Einspeise-Zähler (kWh), Pflicht für die Auswertung | – |
 | `eingabe_anzeigen` | Reiter „Eingabe“ anzeigen (nur Kombikarte) | `true` |
 | `stat_abschlag` | Statistik-ID Abschlag je Monat | `einspeisung:abschlag_monat` |
@@ -78,7 +77,6 @@ Beispiel (YAML):
 type: custom:einspeiseverguetung-card
 versorger: Stadtwerke
 quelle: sensor.pv_einspeisung_gesamt
-jahr_entity: input_select.pv_auswertungsjahr
 ```
 
 ### Erste Schritte

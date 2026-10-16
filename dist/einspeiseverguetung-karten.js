@@ -5,12 +5,11 @@
  * - einspeiseverguetung-auswertung-card: Monatstabelle, Saldo und Prognose
  * Lizenz: MIT
  */
-const EWA_VERSION = '1.2.1';
+const EWA_VERSION = '1.3.0';
 
 /* ---------- gemeinsame Hilfen ---------- */
 const EWA_DEF = {
   versorger: 'Versorger',
-  jahr_entity: '',
   stat_abschlag: 'einspeisung:abschlag_monat',
   stat_abschlag_gesamt: 'einspeisung:abschlag_gesamt',
   stat_abrechnung: 'einspeisung:abrechnung',
@@ -20,31 +19,21 @@ const EWA_DEF = {
 };
 const EWA_STATE = { year: new Date().getFullYear() };
 
-// Jahr: entweder aus einem input_select (gemeinsam nutzbar) oder intern
-function ewaYear(hass, cfg) {
-  const e = cfg.jahr_entity && hass && hass.states[cfg.jahr_entity];
-  if (e) {
-    const y = parseInt(e.state);
-    return { year: isNaN(y) ? EWA_STATE.year : y, options: e.attributes.options || [] };
-  }
+// Jahr: interne Auswahl (gemeinsam für alle Karten auf der Seite)
+function ewaYear() {
   const opts = [];
   for (let y = 2020; y <= new Date().getFullYear() + 1; y++) opts.push(String(y));
   return { year: EWA_STATE.year, options: opts };
 }
 function ewaSetYear(hass, cfg, opt) {
-  if (cfg.jahr_entity && hass.states[cfg.jahr_entity]) {
-    hass.callService('input_select', 'select_option', { entity_id: cfg.jahr_entity, option: opt });
-  } else {
-    EWA_STATE.year = parseInt(opt);
-    window.dispatchEvent(new Event('ewa-year'));
-  }
+  EWA_STATE.year = parseInt(opt);
+  window.dispatchEvent(new Event('ewa-year'));
 }
 function ewaSource(id) { return String(id).split(':')[0]; }
 const EWA_FIELDS = (extra) => ({
   computeLabel: (s) => ({
     versorger: 'Name des Einspeiseversorgers',
     titel: 'Titel der Karte (leer = automatisch)',
-    jahr_entity: 'Jahresauswahl (input_select, optional)',
     stat_abschlag: 'Statistik: Abschlag monatlich',
     stat_abschlag_gesamt: 'Statistik: Abschlag Gesamtsumme',
     stat_abrechnung: 'Statistik: Abrechnung (Ausgleich)',
@@ -55,7 +44,6 @@ const EWA_FIELDS = (extra) => ({
   }[s.name] || s.name),
   computeHelper: (s) => ({
     versorger: 'Wird in Titeln und Texten angezeigt.',
-    jahr_entity: 'Leer = interne Jahresauswahl. Mit einem input_select schalten beide Karten gemeinsam und der Wert bleibt erhalten.',
     stat_abschlag: 'Format quelle:name, z. B. einspeisung:abschlag_monat. Der Teil vor dem Doppelpunkt ist die Quelle.',
     quelle: 'Aufsteigender Zähler der eingespeisten Energie; die Tagesdifferenz wird bewertet.',
     eingabe_anzeigen: 'Ausschalten für eine reine Anzeigekarte (z. B. für Benutzer ohne Admin-Rechte).'
@@ -651,8 +639,7 @@ class EwaKartenEditor extends HTMLElement {
     this._forms = [];
     const top = [
       { name: 'versorger', selector: { text: {} } },
-      { name: 'titel', selector: { text: {} } },
-      { name: 'jahr_entity', selector: { entity: { domain: 'input_select' } } }
+      { name: 'titel', selector: { text: {} } }
     ];
     if (this._kind !== 'eingabe') top.push({ name: 'quelle', selector: { entity: { domain: 'sensor' } } });
     if (this._kind === 'combined') top.push({ name: 'eingabe_anzeigen', selector: { boolean: {} } });
