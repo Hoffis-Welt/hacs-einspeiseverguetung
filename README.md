@@ -67,10 +67,5 @@ jahr_entity: input_select.pv_auswertungsjahr
 - Statistik-IDs nachträglich ändern übernimmt keine alten Daten.
 - Die alten Kartennamen `custom:ewa-eingabe-card` und `custom:ewa-auswertung-card` funktionieren weiter.
 
-## Umstieg von der lokalen Version (`/local/ewa-*.js`)
-1. Über HACS installieren
-2. Die beiden alten Ressourcen unter *Einstellungen → Dashboards → Ressourcen* entfernen
-3. Bestehende Karten und Statistik-IDs (`ewa:…`) bleiben unverändert nutzbar
-
 ## Lizenz
 MIT
