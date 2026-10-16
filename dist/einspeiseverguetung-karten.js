@@ -1,11 +1,12 @@
 /*
- * Einspeisevergütung Karten für Home Assistant
- * - einspeiseverguetung-eingabe-card:    Eingabe von Abschlägen, Abrechnungen und Vergütungssätzen
- *                                        (schreibt direkt in die Langzeitstatistik)
- * - einspeiseverguetung-auswertung-card: Monatstabelle, Saldo und Prognose
+ * Einspeisevergütung Karte für Home Assistant
+ * custom:einspeiseverguetung-card mit den Reitern
+ *  - Auswertung: Monatstabelle, Saldo und Prognose
+ *  - Eingabe:    Abschläge, Abrechnungen und Vergütungssätze (schreibt direkt in die Langzeitstatistik)
+ * (Die Reiter sind intern als eigene Elemente umgesetzt, in der Kartenauswahl erscheint nur die Karte.)
  * Lizenz: MIT
  */
-const EWA_VERSION = '1.3.0';
+const EWA_VERSION = '1.3.1';
 
 /* ---------- gemeinsame Hilfen ---------- */
 const EWA_DEF = {
@@ -607,7 +608,7 @@ class EwaKartenEditor extends HTMLElement {
       inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); apply(); } });
       box.appendChild(inp); box.appendChild(btn); box.appendChild(msg);
       const hint = document.createElement('div'); hint.className = 'help';
-      hint.textContent = 'Neue Statistik: Sie wird mit dem ersten Eintrag in der Eingabekarte angelegt. Bis dahin zeigt die Karte „noch keine Daten“.';
+      hint.textContent = 'Neue Statistik: Sie wird mit dem ersten Eintrag im Reiter „Eingabe“ angelegt. Bis dahin zeigt die Karte „noch keine Daten“.';
       box.appendChild(hint);
       wrap.appendChild(box);
       setTimeout(check, 0);
@@ -646,7 +647,7 @@ class EwaKartenEditor extends HTMLElement {
     r.appendChild(this._form(top));
     const h = document.createElement('h4'); h.textContent = 'Statistiken (vorhanden wählen oder neu anlegen)';
     r.appendChild(h);
-    const help = 'Format quelle:name. Beide Karten müssen dieselben Statistiken verwenden.';
+    const help = 'Format quelle:name, z. B. einspeisung:abschlag_monat.';
     r.appendChild(this._statField('stat_abschlag', 'Statistik: Abschlag monatlich', help));
     if (this._kind !== 'auswertung') r.appendChild(this._statField('stat_abschlag_gesamt', 'Statistik: Abschlag Gesamtsumme', help));
     r.appendChild(this._statField('stat_abrechnung', 'Statistik: Abrechnung (Ausgleich)', help));
@@ -660,17 +661,17 @@ class EwaKartenEditor extends HTMLElement {
 /* ---------- Registrierung (neue Namen + alte Namen als Alias) ---------- */
 if (!customElements.get('einspeiseverguetung-karten-editor')) customElements.define('einspeiseverguetung-karten-editor', EwaKartenEditor);
 const EWA_REG = [
-  ['einspeiseverguetung-card', EwaCombinedCard, 'Einspeisevergütung', 'Auswertung und Eingabe der Einspeisevergütung in einer Karte (Reiter)'],
+  ['einspeiseverguetung-card', EwaCombinedCard, 'Einspeisevergütung', 'Auswertung (Saldo, Prognose, Monatstabelle) und Eingabe von Abschlägen, Abrechnung und Vergütungssatz'],
   ['einspeiseverguetung-eingabe-card', EwaEingabeCard, 'Einspeisevergütung Eingabe', 'Eingabe von Abschlägen, Abrechnungen und Vergütungssatz in die Langzeitstatistik'],
   ['einspeiseverguetung-auswertung-card', EwaAuswertungCard, 'Einspeisevergütung Auswertung', 'Saldo, Prognose und Monatstabelle der Einspeisevergütung gegen die Abschläge des Versorgers']
 ];
 window.customCards = window.customCards || [];
 EWA_REG.forEach(([tag, cls, name, desc], i) => {
   if (!customElements.get(tag)) customElements.define(tag, cls);
-  // In der Kartenauswahl erscheint nur die kombinierte Karte; die Einzelkarten bleiben für bestehende Dashboards nutzbar.
+  // In der Kartenauswahl erscheint nur die Karte; die Reiter-Elemente werden intern verwendet.
   if (i === 0) window.customCards.push({ type: tag, name: name, description: desc });
 });
 // Alte Kartennamen weiter unterstützen
 if (!customElements.get('ewa-eingabe-card')) customElements.define('ewa-eingabe-card', class extends EwaEingabeCard {});
 if (!customElements.get('ewa-auswertung-card')) customElements.define('ewa-auswertung-card', class extends EwaAuswertungCard {});
-console.info('%c EINSPEISEVERGÜTUNG-KARTEN %c v' + EWA_VERSION, 'color:#fff;background:#2e9e6b;font-weight:700', '');
+console.info('%c EINSPEISEVERGÜTUNG-KARTE %c v' + EWA_VERSION, 'color:#fff;background:#2e9e6b;font-weight:700', '');

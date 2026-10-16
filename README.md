@@ -1,4 +1,4 @@
-<h1 align="center">☀️ Einspeisevergütung Karten</h1>
+<h1 align="center">☀️ Einspeisevergütung Karte</h1>
 
 <p align="center">
   <b>Behalte im Blick, was dir dein Versorger für den PV-Strom schuldet – Abschläge, Vergütung und Saldo in einer Dashboard-Karte.</b>
@@ -27,17 +27,16 @@ Alles ohne Helfer, Template-Sensoren oder YAML – alle Werte liegen in der **La
 *Die Screenshots zeigen Beispieldaten.*
 
 ## Funktionen
-- **Eine Karte für alles** (`custom:einspeiseverguetung-card`) mit den Reitern **Auswertung** und **Eingabe** – einmal konfigurieren, fertig. Der Eingabe-Reiter lässt sich ausblenden (reine Anzeigekarte).
+- **Eine Karte für alles** (`custom:einspeiseverguetung-card`) mit den Reitern **Auswertung** und **Eingabe** – einmal konfigurieren, fertig. Der Eingabe-Reiter lässt sich ausblenden (reine Anzeige).
 - **Auswertung**
   - Monatstabelle: kWh, Vergütung, Abschlag, Differenz
   - Summe, **Saldo** (wer schuldet wem wie viel), **Prognose Jahresende**, Abweichung zur Abrechnung
-  - Jahr umschalten mit ◀ ▶ (gilt für alle Karten auf der Seite, ohne Hilfsentität)
+  - Jahr umschalten mit ◀ ▶ (ohne Hilfsentität)
 - **Eingabe**
   - monatliche Abschläge, Jahresabrechnung (Ausgleich) und Vergütungssätze **mit Gültig-ab-Datum** per Formular
   - Zeile antippen = ins Formular übernehmen; gleicher Monat/Jahr/Datum überschreibt
 - **Komplett im Karteneditor konfigurierbar**, inkl. Name des Einspeiseversorgers und „➕ Neu anlegen…“ für die Statistiken
 - Passt sich dem Theme an (hell/dunkel)
-- Die beiden Reiter gibt es für bestehende Dashboards auch als Einzelkarten (`…-eingabe-card`, `…-auswertung-card`); in der Kartenauswahl erscheint nur die Kombikarte.
 
 ## Voraussetzungen
 - Home Assistant 2024.x oder neuer mit Recorder
@@ -46,7 +45,7 @@ Alles ohne Helfer, Template-Sensoren oder YAML – alle Werte liegen in der **La
 
 ## Installation über HACS
 1. HACS → ⋮ → **Benutzerdefinierte Repositories** → URL dieses Repositories, Kategorie **Dashboard**
-2. „Einspeisevergütung Karten“ herunterladen
+2. „Einspeisevergütung Karte“ herunterladen
 3. Browser hart neu laden (Strg+F5). HACS trägt die Ressource automatisch ein.
 
 ## Einrichtung
@@ -57,19 +56,19 @@ Karte „Einspeisevergütung“ im Dashboard hinzufügen und im Editor einstelle
 | `versorger` | Name des Einspeiseversorgers (Titel/Texte) | `Versorger` |
 | `titel` | Kartentitel (leer = automatisch) | – |
 | `quelle` | Einspeise-Zähler (kWh), Pflicht für die Auswertung | – |
-| `eingabe_anzeigen` | Reiter „Eingabe“ anzeigen (nur Kombikarte) | `true` |
+| `eingabe_anzeigen` | Reiter „Eingabe“ anzeigen (`false` = reine Anzeige) | `true` |
 | `stat_abschlag` | Statistik-ID Abschlag je Monat | `einspeisung:abschlag_monat` |
 | `stat_abschlag_gesamt` | Statistik-ID Gesamtsumme (Eingabe) | `einspeisung:abschlag_gesamt` |
 | `stat_abrechnung` | Statistik-ID Abrechnung | `einspeisung:abrechnung` |
 | `stat_satz` | Statistik-ID Vergütungssatz (ct/kWh) | `einspeisung:verguetung_satz` |
 | `abschlag_vorgabe` | vorbelegter Abschlag in € für leere Monate (Eingabe) | leer |
 
-Beide Karten müssen **dieselben** Statistik-IDs verwenden. Die Statistik-IDs haben das Format
+Die Statistik-IDs haben das Format
 `quelle:name`; sie werden beim ersten Eintragen automatisch angelegt.
 
 **Statistik neu anlegen:** Im Karteneditor listet jedes Statistik-Feld die vorhandenen Statistiken. Mit
 „➕ Neu anlegen…“ gibst du eine neue ID ein (Vorschlag und Formatprüfung inklusive, Duplikate werden
-abgelehnt). Die Statistik entsteht mit dem ersten Eintrag in der Eingabekarte; bis dahin zeigt die Karte
+abgelehnt). Die Statistik entsteht mit dem ersten Eintrag im Reiter „Eingabe“; bis dahin zeigt die Karte
 „noch keine Daten“. Der Einspeise-Zähler (kWh) ist ein vorhandener Sensor und nur auswählbar.
 
 Beispiel (YAML):
@@ -80,7 +79,7 @@ quelle: sensor.pv_einspeisung_gesamt
 ```
 
 ### Erste Schritte
-1. In der Eingabekarte **Vergütungssatz** eintragen (ct/kWh, ab Datum, z. B. Inbetriebnahme)
+1. Im Reiter **Eingabe** den **Vergütungssatz** eintragen (ct/kWh, ab Datum, z. B. Inbetriebnahme)
 2. **Abschläge** je Monat eintragen
 3. Nach der Jahresabrechnung den **Ausgleich** eintragen (positiv = Versorger zahlt dir)
 
@@ -89,7 +88,6 @@ quelle: sensor.pv_einspeisung_gesamt
 - Fehlende Abschläge werden in der Prognose mit dem zuletzt bekannten Abschlag angesetzt.
 - Ein Abrechnungs-Ausgleich von 0 gilt als „nicht eingetragen“.
 - Statistik-IDs nachträglich ändern übernimmt keine alten Daten.
-- Die alten Kartennamen `custom:ewa-eingabe-card` und `custom:ewa-auswertung-card` funktionieren weiter.
 
 ## Lizenz
 MIT
